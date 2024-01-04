@@ -2,9 +2,9 @@
 
 from typing import Any, TYPE_CHECKING
 if TYPE_CHECKING:
-    from SharedModules.notion.notion_client.client import BaseClient
-from SharedModules.notion.notion_client.typing import SyncAsync
-from SharedModules.notion.notion_client.helpers import pick
+    from .client import BaseClient
+from .typing import SyncAsync
+from .helpers import pick
 import pandas
 from collections import OrderedDict
 

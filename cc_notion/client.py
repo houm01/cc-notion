@@ -4,7 +4,7 @@ import json
 from collections import namedtuple
 from typing import Optional, Union, Any, Dict, Type, List
 from dataclasses import dataclass
-from SharedModules.notion.notion_client.endpoints import (
+from .endpoints import (
     UsersEndpoint,
     DatabasesEndpoint,
     PagesEndpoint,
@@ -12,7 +12,7 @@ from SharedModules.notion.notion_client.endpoints import (
     ExtensionsEndpoint,
     BlocksEndpoint
 )
-from SharedModules.notion.notion_client.errors import (
+from .errors import (
     RequestTimeoutError,
     is_api_error_code,
     APIResponseError,
@@ -22,7 +22,7 @@ from types import TracebackType
 from abc import abstractclassmethod
 import httpx
 from httpx import Request, Response
-from SharedModules.notion.notion_client.typing import SyncAsync
+from .typing import SyncAsync
 
 
 @dataclass
