@@ -185,7 +185,7 @@ class PagesEndpoint(Endpoint):
                                                     check_value=check_value)
         if resp == '未插入':
             page = self.parent.build.page(database_id=check_database_id, propertys=propertys)
-            self.create(**page)
+            return self.create(**page)
         else:
             page = self.parent.build.page(database_id=check_database_id, propertys=propertys)
             return self.update(page_id=resp, **page)
@@ -268,6 +268,15 @@ class BuildEndpoint(Endpoint):
         select = {"select": {"name": content}}
         return select
     
+    def people(self, content):
+        people = {
+            "people": [{
+            "object": "user",
+            "id": content
+            }]
+        }
+        return people
+
     def status(self, content):
         status = {"status": {"name": content}}
         return status
@@ -364,8 +373,8 @@ class BuildEndpoint(Endpoint):
             filter_type (str, optional): and 或 or, 默认是 'and'.
             filter_syntax (list, optional): 示例如下
                 filter_syntax = [
-                    ('status', 'DBInstanceStatus', 'equals', 'available'),
-                    ('select', 'DBClusterIdentifier', 'equals', 'usa3-mbp-cluster-01')
+                    ('status', 'Tags', 'equals', 'available'),
+                    ('select', 'Type', 'equals', 'Prod')
                 ]
 
         Returns:
@@ -407,6 +416,26 @@ class BuildEndpoint(Endpoint):
                 "children":[children]
             }
             }
+
+    def block_rich_text(self, content):
+        return {
+            "type": "text",
+            "text": {
+                "content": "Some words ",
+                "link": null
+            },
+            "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+            },
+            "plain_text": "Some words ",
+            "href": null
+            }
+
 
 class ExtensionsEndpoint(Endpoint):
 
@@ -485,7 +514,6 @@ class ExtensionsEndpoint(Endpoint):
                         database_id=relation_id,
                         **filter_dict
                     ).results
-                    # print(page)
                     result = self.parse_page(page=page, name=name)
                     # result = self.query_database_row_name(database_id=relation_db_id, page_id=relation_id, query_property='name2')
                 except Exception as e:
@@ -493,7 +521,6 @@ class ExtensionsEndpoint(Endpoint):
             elif column_type == 'phone_number':
                 result = page['properties'][name]['phone_number']
             else:
-                # print(column_type)
                 pass
         elif get == 'page_id':
             if isinstance(page, list):
