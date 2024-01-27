@@ -118,6 +118,8 @@ class DatabasesEndpoint(Endpoint):
             body=pick(kwargs, "filter", "sorts", "start_cursor", "page_size"),
             auth=kwargs.get("auth")
         )
+    
+
 
 
 class PagesPropertiesEndpoint(Endpoint):
@@ -635,6 +637,18 @@ class ExtensionsEndpoint(Endpoint):
         # print(df.to_latex(index=False))
         return df.to_latex(index=False)
     
-    def query_page_id(self, database_id, title):
-        pass
+    def query_relation_page_id(self, database_id, name):
+        filter_syntax = [
+            ('rich_text', 'name2', 'equals', name),
+        ]
+        filter_text = self.parent.build.filter(filter_syntax=filter_syntax)
+        print(filter_text)
+
+        page = self.parent.databases.query(database_id=database_id, **filter_text).results
+
+        # print(page)
+        try:
+            return self.parse_page(page=page, get='page_id')
+        except Exception as e:
+            raise ValueError('未查找到 Page')
 
