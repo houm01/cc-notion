@@ -118,8 +118,49 @@ class DatabasesEndpoint(Endpoint):
             body=pick(kwargs, "filter", "sorts", "start_cursor", "page_size"),
             auth=kwargs.get("auth")
         )
-    
 
+    def query2(self, database_id: str, filter_type: str='and', filter_syntax: list=[]):
+        '''
+        _summary_
+
+        Args:
+            database_id (str): _description_
+            filter_type (str, optional): _description_. Defaults to 'and'.
+            filter_syntax (list, optional): 示例如下
+                filter_syntax = [
+                    ('status', 'Tags', 'equals', 'available'),
+                    ('select', 'Type', 'equals', True)
+                ]
+
+        Returns:
+            _type_: _description_
+        '''
+        filter_properties = self.parent.build.filter(filter_type=filter_type, filter_syntax=filter_syntax)
+
+        return self.parent.request(
+            path=f'databases/{database_id}/query',
+            method="POST",
+            body=filter_properties
+        ) 
+
+    def query_page_id(self, database_id: str, name: str='name2', value: str=None):
+        '''
+        查询的内容必须是唯一的
+
+        Args:
+            name (_type_): 仅支持 rich_text, name 是表头的名称
+            value: 查询的值
+
+        Returns:
+            _type_: _description_
+        '''
+        filter_syntax = [
+            ('rich_text', name, 'equals', value)
+        ]
+        
+        filter_dict = self.parent.build.filter(filter_syntax=filter_syntax)
+        page = self.query(database_id=database_id, **filter_dict).results[0]
+        return self.parent.extensions.parse_page(page=page, get='page_id')
 
 
 class PagesPropertiesEndpoint(Endpoint):
@@ -169,6 +210,62 @@ class PagesEndpoint(Endpoint):
             auth=kwargs.get('auth')
         )
 
+
+    def update_property(self, page_id, update_type, update_name, update_value):
+
+        if update_type == 'date':
+            update_content = self.parent.build.date(content=update_value)
+
+        elif update_type == 'status':
+            update_content = self.parent.build.status(content=update_value)
+        
+        elif update_type == 'rich_text':
+            update_content = self.parent.build.rich_text(content=update_value)
+
+        properties = {
+            "properties": {
+                update_name: update_content}
+        }
+
+        return self.update(page_id=page_id, **properties)
+
+        # return self.parent.request(
+        #     path=f'pages/{page_id}',
+        #     method='PATCH',
+        #     body=pick(kwargs, 'archived', 'properties', 'icon', 'cover'),
+        #     auth=kwargs.get('auth')
+        # )
+
+
+    # def update_property(self, 
+    #            page_id: str=None, 
+    #            update_type: str=None, 
+    #            propertys: dict=None, 
+    #            **kwargs: Any) -> SyncAsync[Any]:
+    #     '''
+    #     https://developers.notion.com/reference/patch-page
+
+    #     properties = {
+    #         "properties": {
+    #             "LastRunTime": {"date": {'start': my_time.get_utc_now_str()}}}
+    #     }
+        
+    #     resp = notion.pages.update(page_id=probe_instance.page_id, **properties)
+
+    #     Args:
+    #         page_id (str): _description_
+
+    #     Returns:
+    #         SyncAsync[Any]: _description_
+    #     '''
+    #     if update_type == 'properties':
+    #         return self.parent.request(
+    #             path=f'pages/{page_id}',
+    #             method='PATCH',
+    #             body=pick(kwargs, 'archived', 'properties', 'icon', 'cover'),
+    #             auth=kwargs.get('auth')
+    #         )
+
     def create_and_check_field(self, check_database_id, check_property, check_value, **kwargs) -> SyncAsync[Any]:
         resp = self.parent.extensions.check_insertd(database_id=check_database_id, check_property=check_property, check_value=check_value)
         if resp == '未插入':
@@ -182,6 +279,20 @@ class PagesEndpoint(Endpoint):
             return resp
 
     def create_check_field_update(self, check_database_id, check_property, check_value, propertys, **kwargs) -> SyncAsync[Any]:
+        '''
+        _summary_
+
+        Args:
+            check_database_id (_type_): _description_
+            check_property (_type_): _description_
+            check_value (_type_): _description_
+            propertys (list): example 
+                [(status, 'Status', '运行中'), (select, '类型', '日常工作')]
+
+
+        Returns:
+            SyncAsync[Any]: _description_
+        '''
         resp = self.parent.extensions.check_insertd(database_id=check_database_id, 
                                                     check_property=check_property, 
                                                     check_value=check_value)
@@ -314,7 +425,8 @@ class BuildEndpoint(Endpoint):
 
         Args:
             database_id (_type_): _description_
-            propertys (list): example [(status, 'Status', '运行中'), (select, '类型', '日常工作')]
+            propertys (list): example 
+                [(status, 'Status', '运行中'), (select, '类型', '日常工作')]
 
         Raises:
             ValueError: _description_
@@ -351,21 +463,6 @@ class BuildEndpoint(Endpoint):
         }
 
         return page
-    
-    def filter3(self, 
-               filter_property: str='name2', 
-               filter_type: str='rich_text', 
-               filter_value: str=''):
-        
-        filter = {
-            "filter": {
-                "property": filter_property,
-                filter_type: {
-                    "equals": filter_value
-                }
-            }
-        }
-        return filter
 
     def filter(self, filter_type: str='and', filter_syntax: list=''):
         '''
@@ -441,14 +538,19 @@ class BuildEndpoint(Endpoint):
 
 class ExtensionsEndpoint(Endpoint):
 
-    def check_insertd(self, database_id, check_property, check_value):
+    def check_insertd(self, 
+                      database_id: str=None, 
+                      check_property: str=None, 
+                      check_value: str=None, 
+                      check_type: str='rich_text',
+                      field: str='contains'):
         resp = self.parent.databases.query(
             **{
                 "database_id": database_id,
                 "filter": {
                     "property": check_property,
-                    "rich_text": {
-                        "contains": check_value,
+                    check_type: {
+                        field: check_value,
                     },
                 },
             }
@@ -458,7 +560,11 @@ class ExtensionsEndpoint(Endpoint):
         else:
             return '未插入'
     
-    def parse_page(self, page: str='', get: str='properties', name: str='none', relation_db_id: str='none'):
+    def parse_page(self, 
+                   page: str='', 
+                   get: str='properties', 
+                   name: str='none', 
+                   relation_db_id: str=None):
         '''
         _summary_
 
@@ -491,6 +597,7 @@ class ExtensionsEndpoint(Endpoint):
                 except Exception as e:
                     result = e
             elif column_type == 'title':
+                # print(page['properties'][name]['title'])
                 result = page['properties'][name]['title'][0]['plain_text']
             elif column_type == 'formula':
                 result = page['properties'][name]['formula']['string']
@@ -505,26 +612,24 @@ class ExtensionsEndpoint(Endpoint):
                     result = '未解析到日期'
             elif column_type == 'relation':
                 try:
-                    relation_id = page['properties'][name]['relation'][0]['id']
-
+                    query_page_id = page['properties'][name]['relation'][0]['id']
                     filter_syntax = [
-                            ('rich_text', 'name2', 'equals', 'name')
+                            ('rich_text', 'page_id', 'equals', query_page_id.replace('-', ''))
                         ]
-                    
                     filter_dict = self.parent.build.filter(filter_syntax=filter_syntax)
                     page = self.parent.databases.query(
-                        database_id=relation_id,
+                        database_id=relation_db_id,
                         **filter_dict
-                    ).results
-                    result = self.parse_page(page=page, name=name)
-                    # result = self.query_database_row_name(database_id=relation_db_id, page_id=relation_id, query_property='name2')
+                    )
+                    result = self.parse_page(page=page.results[0], name='name2')
                 except Exception as e:
-                    result = 'error', page['properties']
+                    raise Exception(e)
             elif column_type == 'phone_number':
                 result = page['properties'][name]['phone_number']
             else:
                 pass
         elif get == 'page_id':
+            
             if isinstance(page, list):
                 result = page[0]['id']
             else:
@@ -634,7 +739,7 @@ class ExtensionsEndpoint(Endpoint):
         
         # df = pandas.DataFrame({'name': ['Raphael', 'Donatello'],'mask': ['red', 'purple'],'weapon': ['sai', 'bo staff']})
         df = pandas.DataFrame(sorted_dict)
-        # print(df.to_latex(index=False))
+
         return df.to_latex(index=False)
     
     def query_relation_page_id(self, database_id, name):
@@ -642,11 +747,9 @@ class ExtensionsEndpoint(Endpoint):
             ('rich_text', 'name2', 'equals', name),
         ]
         filter_text = self.parent.build.filter(filter_syntax=filter_syntax)
-        print(filter_text)
 
         page = self.parent.databases.query(database_id=database_id, **filter_text).results
 
-        # print(page)
         try:
             return self.parse_page(page=page, get='page_id')
         except Exception as e:

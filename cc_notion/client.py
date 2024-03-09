@@ -113,7 +113,7 @@ class BaseClient:
                 code = None
             if code and is_api_error_code(code):
                 raise APIResponseError(response, body['message'], code)
-            raise HTTPResponseError
+            # raise HTTPResponseError
         
         body = response.json()
 
